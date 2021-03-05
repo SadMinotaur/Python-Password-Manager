@@ -1,7 +1,27 @@
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA3_256
 from Crypto.Util.Padding import pad, unpad
+import base64
+
 BLOCK_SIZE = 16
+FILENAME = "test.txt"
+
+
+def getKey(key: str):
+    sha = SHA3_256.new()
+    sha.update(key)
+    return sha.hexdigest()[:BLOCK_SIZE].encode('utf_8')
+
+
+def encrypt(key: str, text: bytes):
+    cipher = AES.new(key, AES.MODE_ECB)
+    return cipher.encrypt(pad(text, BLOCK_SIZE))
+
+
+def decrypt(key: str, msg: bytes):
+    decipher = AES.new(key, AES.MODE_ECB)
+    msg_dec = decipher.decrypt(msg)
+    return unpad(msg_dec, BLOCK_SIZE)
 
 
 def writeFileNew(name: str):
@@ -9,38 +29,63 @@ def writeFileNew(name: str):
     f.close()
 
 
-def writeFileAdd(fileName: str, service: str, login: str, password: str):
-    f = open(fileName, "a")
-    f.write(service + ";" + login + ";" + password + "\n")
+def writeFileAdd(service: str, login: str, password: str, key: str):
+    f = open(FILENAME, "ab")
+    f.write(encrypt(key, bytes(service + ";" +
+                               login + ";" + password + "s", encoding='utf8')))
     f.close()
 
 
-def readFileAll(name: str):
-    f = open(name, "r")
-    con = map(lambda a: a.split(";"), f.read().splitlines())
-    f.close()
-    return con
+def readFileAll(name: str, key: str):
+    fileName = open(name, "rb")
+    allLines = map(lambda a: a.split(";"),
+                   decrypt(key, fileName.read()).split("s"))
+    fileName.close()
+    return allLines
 
 
-def findService(name: str, fileName: str):
-    c = readFileAll(fileName)
-    for line in c:
+def findService(name: str, key: str):
+    lines = readFileAll(FILENAME, key)
+    for line in lines:
         if line[0] == name:
             return line
     return "No such line"
 
 
-sha = SHA3_256.new()
-sha.update(b"test")
-key = sha.hexdigest()[:BLOCK_SIZE].encode('utf_8')
+key = "test"
+exit = True
+while exit:
+    val = input()
+    if val == "exit":
+        print("Exit")
+        exit = False
+    if val == "new":
+        print("New file")
+        writeFileNew(FILENAME)
+    if val == "key":
+        print("New key")
+        key = getKey(input().encode("utf-8"))
+    if val == "eN":
+        if key == "":
+            break
+        print("Encrypt new service")
+        writeFileAdd(input(), input(), input(), key)
+    if val == "find":
+        print("Find service")
+        res = findService(input(), key)
+        if res == "No such line":
+            break
+        print(res)
+        print(decrypt(key, base64.b64decode(res[1])))
+        print(decrypt(key, base64.b64decode(res[2])))
 
-cipher = AES.new(key, AES.MODE_ECB)
-msg = cipher.encrypt(pad(b'test', BLOCK_SIZE))
-print(msg.hex())
+# key = getKey(b"test")
+# enc = encrypt(key, b"test")
+# dec = decrypt(key, enc)
 
-decipher = AES.new(key, AES.MODE_ECB)
-msg_dec = decipher.decrypt(msg)
-print(unpad(msg_dec, BLOCK_SIZE))
+# decipher = AES.new(key, AES.MODE_ECB)
+# msg_dec = decipher.decrypt(msg)
+# print(unpad(msg_dec, BLOCK_SIZE))
 
 # writeFileNew("test.txt")
 # writeFileAdd("test.txt", "test1", "test2", "test3")
