@@ -39,7 +39,7 @@ def writeFileAdd(service: str, login: str, password: str, key: str):
 def readFileAll(name: str, key: str):
     fileName = open(name, "rb")
     allLines = map(lambda a: a.split(";"),
-                   decrypt(key, fileName.read()).split("s"))
+                   decrypt(key, fileName.read()).decode("utf-8").split("s"))
     fileName.close()
     return allLines
 
@@ -73,11 +73,10 @@ while exit:
     if val == "find":
         print("Find service")
         res = findService(input(), key)
-        if res == "No such line":
-            break
         print(res)
-        print(decrypt(key, base64.b64decode(res[1])))
-        print(decrypt(key, base64.b64decode(res[2])))
+        if res == "No such line":
+            continue
+
 
 # key = getKey(b"test")
 # enc = encrypt(key, b"test")
